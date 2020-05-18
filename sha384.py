@@ -38,17 +38,21 @@ def main():
     if len(sys.argv) == 1:
         print('Iveskite failo pavadinima')
         return
-    message = read(sys.argv[1])
-    x = pad(message)
+    x = read(sys.argv[1])
+    x = pad(x)
     x = parse(x)
     x = hash(x)
     print(x)
 
+# failo atidarymas skaitymui baitais
+# funkcija priima failo pavadinima, grazina failo turini baitu formatu
 def read(file = 'test.txt'):
     f = open(file, 'rb')
     return f.read()
 
-def pad(message):    
+# zinutes pavertimas bitais bei ilgio padarymas i toki, kad len(msg) % 1024 = 0
+# funkcija priima zinute baitais, grazina 1024*n bitu seka
+def pad(message):
     newmsg = ""
     k = 0
     if type(message) is bytes:
@@ -73,6 +77,9 @@ def pad(message):
             newmsg += l
         return newmsg
 
+# 1024*n bitu sekos suskaldymas i n bloku, susidedanciu is 1024 bitu
+# funkcija priima zinute bitu sekos pavidalu, grazina n bloku
+# 1 blokas sudarytas is 16 bloku, kuriuose yra po 64 zinutes bitus (m[n][16])
 def parse(message):
     if len(message)%1024 != 0:
         return
@@ -92,7 +99,7 @@ def maj(x, y, z):
     return (x & y) ^ (x & z) ^ (y & z)
 
 def rotR(x, n):
-    mask = int('1111111111111111111111111111111111111111111111111111111111111111', 2) # not x = x^mask
+    mask = int('1111111111111111111111111111111111111111111111111111111111111111', 2)
     return (x >> n) | ((x << (64 - n)) & mask)
 
 def sum0(x):
@@ -107,12 +114,11 @@ def sigma0(x):
 def sigma1(x):
     return rotR(x, 19) ^ rotR(x, 61) ^ (x >> 6)
 
-def addMod64(*argv):
-    rez = 0
-    for x in argv:
-        rez += x
-    return rez % int(math.pow(2, 64))
+def mod64(x):
+    return x % int(math.pow(2, 64))
 
+# zinutes uzkodavimas
+# funkcija priima zinute pavidalu m[n][16]
 def hash(message):
     for i in range(len(message)):
         w = [None] * 80
@@ -120,7 +126,7 @@ def hash(message):
             if j < 16:
                 w[j] = int(message[i][j], 2)
             else:
-                w[j] = addMod64(sigma1(w[j-2]), w[j-7], sigma0(w[j-15]), w[j-16])
+                w[j] = mod64(sigma1(w[j-2]) + w[j-7] + sigma0(w[j-15]) + w[j-16])
         a = h[0]
         b = h[1]
         c = h[2]
@@ -131,31 +137,30 @@ def hash(message):
         hh = h[7]
         
         for t in range(80):
-            T1 = addMod64(hh + sum1(e) + ch(e, f, g) + k[t] + w[t])
-            T2 = addMod64(sum0(a) + maj(a, b, c))
+            T1 = mod64(hh + sum1(e) + ch(e, f, g) + k[t] + w[t])
+            T2 = mod64(sum0(a) + maj(a, b, c))
             hh = g
             g = f
             f = e
-            e = addMod64(d, T1)
+            e = mod64(d + T1)
             d = c
             c = b
             b = a
-            a = addMod64(T1, T2)
+            a = mod64(T1 + T2)
 
-        h[0] = addMod64(a, h[0])
-        h[1] = addMod64(b, h[1])
-        h[2] = addMod64(c, h[2])
-        h[3] = addMod64(d, h[3])
-        h[4] = addMod64(e, h[4])
-        h[5] = addMod64(f, h[5])
-        h[6] = addMod64(g, h[6])
-        h[7] = addMod64(hh, h[7])
+        h[0] = mod64(a + h[0])
+        h[1] = mod64(b + h[1])
+        h[2] = mod64(c + h[2])
+        h[3] = mod64(d + h[3])
+        h[4] = mod64(e + h[4])
+        h[5] = mod64(f + h[5])
+        h[6] = mod64(g + h[6])
+        h[7] = mod64(hh + h[7])
 
     rez = '0x'
     for i in range(len(h) - 2):
-        rez += hex(h[i])[2:]
+        rez += format(h[i], '016x')
     return rez
-    
-    
+
 if __name__ == "__main__":
     main()
